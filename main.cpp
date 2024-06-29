@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/epsilon.hpp>
 #include <glm/gtx/rotate_vector.hpp>
+#include <glm/gtx/vec_swizzle.hpp>
 
 void clear() {
 	//std::cout << "\x1B[2J\x1B[H";
@@ -39,10 +40,28 @@ std::optional<glm::fvec3> march(glm::fvec3 initial_pos, glm::fvec3 dir, double t
 	return pos;
 }
 
+// See https://iquilezles.org/articles/normalsSDF/
+glm::fvec3 calcNormal(glm::fvec3 p, double time) {
+	const float h = 0.0001f;
+	const auto k = glm::fvec2(1, -1);
+	auto n =
+			glm::xyy(k) * donut_sdf(p + glm::xyy(k) * h, time) +
+			glm::yyx(k) * donut_sdf(p + glm::yyx(k) * h, time) +
+			glm::yxy(k) * donut_sdf(p + glm::yxy(k) * h, time) +
+			glm::xxx(k) * donut_sdf(p + glm::xxx(k) * h, time);
+	return glm::normalize(n);
+}
+
+char shade(float d) {
+	static constexpr std::string_view chars = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'.";
+	return chars[chars.size() - static_cast<std::size_t>(d * chars.size())];
+}
+
 int main() {
-	static constexpr auto screen_size = glm::i32vec2(32, 64);
+	static constexpr auto screen_size = glm::i32vec2(64, 128);
 	static constexpr auto camera_pos = glm::fvec3(0.f, 0.f, 1.f);
 	static constexpr auto camera_scale = 0.4f;
+	static constexpr auto light_pos = glm::fvec3(3.f, 4.f, 4.f);
 
 	auto time_begin = std::chrono::high_resolution_clock::now();
 	while (true) {
@@ -60,7 +79,11 @@ int main() {
 					continue;
 				}
 
-				std::cout << 'x';
+				static constexpr auto ambient = 0.1f;
+				auto n = calcNormal(*hit, dt);
+				auto l = glm::normalize(light_pos - *hit);
+				auto d = glm::max(glm::dot(n, l), 0.f) + ambient;
+				std::cout << shade(abs(d));
 			}
 			std::cout << '\n';
 		}
