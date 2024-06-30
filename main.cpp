@@ -1,6 +1,7 @@
 #include <iostream>
 #include <optional>
 #include <chrono>
+#include <vector>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
@@ -63,12 +64,15 @@ int main() {
 	static constexpr auto camera_scale = 0.4f;
 	static constexpr auto light_pos = glm::fvec3(3.f, 4.f, 4.f);
 
+	std::vector<char> out(screen_size.x * screen_size.y, ' ');
+
 	auto time_begin = std::chrono::high_resolution_clock::now();
 	while (true) {
 		auto time_now = std::chrono::high_resolution_clock::now();
 		using f_ms = std::chrono::duration<double, std::milli>;
 		auto dt = std::chrono::duration_cast<f_ms>(time_now - time_begin).count() / 1000.;
 
+		std::size_t k = 0;
 		for (std::int32_t i = 0; i < screen_size.x; ++i) {
 			for (std::int32_t j = 0; j < screen_size.y; ++j) {
 				auto offset = glm::fvec2(i * 2 - screen_size.x, j * 2 - screen_size.y) / glm::fvec2(screen_size);
@@ -76,6 +80,7 @@ int main() {
 				auto hit = march(pos, glm::fvec3(0.f, 0.f, -1.f), dt);
 				if (!hit) {
 					std::cout << ' ';
+					out[k++] = ' ';
 					continue;
 				}
 
@@ -84,10 +89,13 @@ int main() {
 				auto l = glm::normalize(light_pos - *hit);
 				auto d = glm::max(glm::dot(n, l), 0.f) + ambient;
 				std::cout << shade(abs(d));
+				out[k++] = shade(d);
 			}
 			std::cout << '\n';
+			out[k++] = '\n';
 		}
 		clear();
+		std::copy(out.begin(), out.end(), std::ostream_iterator<char>(std::cout));
 	}
 	return 0;
 }
